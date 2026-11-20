@@ -25,7 +25,10 @@ app.use(
       if (!origin || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
-      if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) {
+      if (
+        origin === 'https://instaaccount.netlify.app' ||
+        (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
+      ) {
         return callback(null, true);
       }
       return callback(new Error('Blocked by CORS policy'));
