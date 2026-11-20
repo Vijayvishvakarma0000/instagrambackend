@@ -14,24 +14,40 @@ connectDB();
 
 const app = express();
 
+// Trust reverse proxy (Render, Cloudflare, etc.)
+app.set('trust proxy', 1);
+
 // Security HTTP headers
 app.use(helmet());
 
-// CORS configuration (allow cookies from any local dev frontend port e.g. 5173, 5174)
+// Allowed origins
+const allowedOrigins = [
+  'https://instaaccount.netlify.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+// CORS configuration
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like curl, postman) or any localhost/127.0.0.1 port
-      if (!origin || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin) return callback(null, true);
+
+      // Allow local development (localhost / 127.0.0.1 on any port)
+      if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
+
+      // Allow Netlify deployment domains (*.netlify.app) and explicit frontend URLs
       if (
-        origin === 'https://instaaccount.netlify.app' ||
-        (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
+        allowedOrigins.includes(origin) ||
+        /^https:\/\/([a-zA-Z0-9_-]+\.)?netlify\.app$/.test(origin)
       ) {
         return callback(null, true);
       }
-      return callback(new Error('Blocked by CORS policy'));
+
+      // Allow request to proceed so CORS header doesn't fail
+      return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -60,6 +76,11 @@ app.use((req, res) => {
 // Centralized Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err.stack);
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',

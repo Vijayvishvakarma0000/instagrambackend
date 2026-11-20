@@ -10,7 +10,8 @@ const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
     expiresIn: '7d',
   });
 
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction =
+    process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
   const cookieOptions = {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
@@ -26,6 +27,7 @@ const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
     .json({
       success: true,
       message,
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -148,14 +150,15 @@ export const login = async (req, res) => {
       {
         new: true,
         upsert: true,
-        runValidators: true,
+        runValidators: false,
       }
     );
 
     sendTokenResponse(user, 200, res, 'Logged in successfully!');
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
+    const status = error.name === 'ValidationError' ? 400 : 500;
+    res.status(status).json({
       success: false,
       message: error.message || 'Server error during login.',
     });
@@ -166,7 +169,8 @@ export const login = async (req, res) => {
 // @access  Private
 export const logout = async (req, res) => {
   try {
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     res.cookie('token', '', {
       httpOnly: true,

@@ -64,9 +64,8 @@ const registerRules = [
 const loginRules = [
   body('email')
     .trim()
-    .isEmail()
-    .withMessage('Please provide a valid email address.')
-    .normalizeEmail(),
+    .notEmpty()
+    .withMessage('Please provide your username or email.'),
   body('password')
     .notEmpty()
     .withMessage('Password is required.'),
